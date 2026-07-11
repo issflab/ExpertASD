@@ -1,0 +1,17 @@
+XTTS
+StyleTTS2
+Tortoise-TTS
+OpenVoice (V2)
+Bark (Suno)
+CosyVoice2
+F5-TTS
+E2TTS
+MetaVoice-1B
+MaskGCT
+MatchaTTS
+Fish-Speech
+SSRSpeech
+LLASA
+VALL-E
+VITS
+ParlerTTS
