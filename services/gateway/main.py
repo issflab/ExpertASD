@@ -140,4 +140,5 @@ def job_status(job_id: str) -> JobResult:
     )
 
 
+storage.outputs_dir().mkdir(parents=True, exist_ok=True)
 app.mount("/outputs", StaticFiles(directory=str(storage.outputs_dir())), name="outputs")

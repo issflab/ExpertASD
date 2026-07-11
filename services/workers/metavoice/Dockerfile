@@ -19,8 +19,11 @@ RUN git clone https://github.com/metavoiceio/metavoice-src.git /opt/metavoice \
     && pip3 install --no-cache-dir -e /opt/metavoice \
     && pip3 install --no-cache-dir soundfile
 
-COPY shared/python /shared_python
-RUN pip3 install --no-cache-dir /shared_python
+# Shared library: runtime deps explicit, package on PYTHONPATH via COPY (not a
+# wheel) — the base image's older pip mis-builds the local pyproject otherwise.
+COPY shared/python/requirements.txt /tmp/shared-req.txt
+RUN pip3 install --no-cache-dir -r /tmp/shared-req.txt
+COPY shared/python/expertasd_common /app/expertasd_common
 
 # Upstream's telemetry opt-out check is `bool(os.getenv("ANONYMIZED_TELEMETRY",
 # True))` — truthy for ANY non-empty string, so only the empty string disables it.

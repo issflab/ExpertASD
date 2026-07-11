@@ -7,8 +7,9 @@ WORKDIR /app
 COPY services/gateway/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY shared/python /shared_python
-RUN pip install --no-cache-dir /shared_python
+# Shared library placed on PYTHONPATH via COPY (not built as a wheel); its
+# runtime deps are already in requirements.txt above.
+COPY shared/python/expertasd_common /app/expertasd_common
 
 COPY services/gateway/main.py /app/main.py
 

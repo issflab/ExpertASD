@@ -37,6 +37,9 @@ def fetch_job(job_id: str) -> Optional[Job]:
 
 def job_status(job: Job) -> str:
     status = job.get_status(refresh=False)
+    # RQ 2.x returns a JobStatus enum (str(JobStatus.FINISHED) == "JobStatus.FINISHED");
+    # normalize to its value ("finished") so the mapping below matches.
+    status = getattr(status, "value", status)
     mapping = {
         "queued": "queued",
         "started": "running",

@@ -9,6 +9,7 @@ systems:
   tortoise-tts:
     display_name: Tortoise-TTS
     queue: tortoise-tts
+    worker_host: worker-tortoise
     ar_nar: AR
     tts_type: [transformer, diffusion]
     vocoder: UnivNet
@@ -25,6 +26,7 @@ systems:
   cosyvoice2:
     display_name: CosyVoice2
     queue: cosyvoice2
+    worker_host: worker-cosyvoice2
     ar_nar: AR
     tts_type: [flow, llm]
     vocoder: HiFiGAN
@@ -41,6 +43,7 @@ systems:
   metavoice-1b:
     display_name: MetaVoice-1B
     queue: metavoice-1b
+    worker_host: worker-metavoice
     ar_nar: NAR
     tts_type: [transformer, llm]
     vocoder: multi-band diffusion

@@ -1,0 +1,8 @@
+# Runtime dependencies of expertasd_common. Installed explicitly in each
+# image; the package itself is placed on PYTHONPATH by COPYing the
+# expertasd_common/ directory (not built as a wheel), which avoids pip
+# mis-building the local project under the base images' older pip.
+pydantic>=2.0
+redis>=5.0
+rq>=1.15
+pyyaml>=6.0

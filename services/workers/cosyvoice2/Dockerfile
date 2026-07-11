@@ -21,10 +21,13 @@ RUN grep -vE '^(deepspeed|tensorrt|gradio|vllm|wandb)' /opt/CosyVoice/requiremen
         > /tmp/requirements-inference.txt \
     && pip3 install --no-cache-dir -r /tmp/requirements-inference.txt
 
-COPY shared/python /shared_python
-RUN pip3 install --no-cache-dir /shared_python
+# Shared library: runtime deps explicit, package on PYTHONPATH via COPY (not a
+# wheel) — the base image's older pip mis-builds the local pyproject otherwise.
+COPY shared/python/requirements.txt /tmp/shared-req.txt
+RUN pip3 install --no-cache-dir -r /tmp/shared-req.txt
+COPY shared/python/expertasd_common /app/expertasd_common
 
-ENV PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS
+ENV PYTHONPATH=/opt/CosyVoice:/opt/CosyVoice/third_party/Matcha-TTS:/app
 ENV COSYVOICE_MODEL_DIR=/data/hf_cache/expertasd_models/CosyVoice2-0.5B
 
 WORKDIR /app
