@@ -1,0 +1,55 @@
+# Machine-readable registry of TTS systems served by this pipeline.
+# The gateway validates requests against this file; GET /v1/systems serves it.
+# Operational successor to selected_tts_systems.csv (kept for provenance).
+#
+# license_verified_at dates reflect when the license was last checked against
+# the upstream repo's actual LICENSE file / model card (see docs/licensing.md).
+
+systems:
+  tortoise-tts:
+    display_name: Tortoise-TTS
+    queue: tortoise-tts
+    ar_nar: AR
+    tts_type: [transformer, diffusion]
+    vocoder: UnivNet
+    zero_shot: true
+    requires_reference_text: false
+    upstream_repo: https://github.com/neonbjb/tortoise-tts
+    upstream_commit: 8a2563ecabe93c4fb626f876dd0c52c966edef2f
+    license:
+      code_license: Apache-2.0
+      weights_license: Apache-2.0
+      license_verified_at: "2026-07-11"
+      notes: ""
+
+  cosyvoice2:
+    display_name: CosyVoice2
+    queue: cosyvoice2
+    ar_nar: AR
+    tts_type: [flow, llm]
+    vocoder: HiFiGAN
+    zero_shot: true
+    requires_reference_text: true
+    upstream_repo: https://github.com/FunAudioLLM/CosyVoice
+    upstream_commit: 074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc
+    license:
+      code_license: Apache-2.0
+      weights_license: Apache-2.0
+      license_verified_at: "2026-07-11"
+      notes: "Weights license per FunAudioLLM/CosyVoice2-0.5B model card."
+
+  metavoice-1b:
+    display_name: MetaVoice-1B
+    queue: metavoice-1b
+    ar_nar: NAR
+    tts_type: [transformer, llm]
+    vocoder: multi-band diffusion
+    zero_shot: true
+    requires_reference_text: false
+    upstream_repo: https://github.com/metavoiceio/metavoice-src
+    upstream_commit: de3fa211ac4621e03a5f990651aeecc64da418f5
+    license:
+      code_license: Apache-2.0
+      weights_license: Apache-2.0
+      license_verified_at: "2026-07-11"
+      notes: ""

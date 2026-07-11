@@ -1,0 +1,117 @@
+openapi: 3.0.3
+info:
+  title: ExpertASD TTS Generation Gateway
+  description: >
+    Single entrypoint for generating synthetic/cloned speech samples across
+    multiple containerized TTS systems, for expert-in-the-loop audio deepfake
+    detection research. Mirrored by pydantic models in
+    shared/python/expertasd_common/schemas.py.
+  version: 0.1.0
+paths:
+  /v1/synthesize:
+    post:
+      summary: Enqueue a synthesis job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SynthesizeRequest"
+      responses:
+        "202":
+          description: Job accepted and queued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobAccepted"
+        "400":
+          description: Unknown tts_system, or missing reference_text for a
+            system whose registry entry sets requires_reference_text.
+  /v1/jobs/{job_id}:
+    get:
+      summary: Job status and result
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: Current job state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobResult"
+        "404":
+          description: Unknown job id
+  /v1/systems:
+    get:
+      summary: Registry of available TTS systems with live worker health
+      responses:
+        "200":
+          description: Registry contents plus per-worker health status
+  /v1/health:
+    get:
+      summary: Gateway liveness
+      responses:
+        "200": {description: Gateway is up}
+  /outputs/{job_id}/audio.wav:
+    get:
+      summary: Download generated audio (static file mount)
+      parameters:
+        - name: job_id
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        "200":
+          description: WAV bytes
+          content:
+            audio/wav: {}
+components:
+  schemas:
+    SynthesizeRequest:
+      type: object
+      required: [tts_system, text]
+      properties:
+        tts_system:
+          type: string
+          description: Registry id, e.g. tortoise-tts, cosyvoice2, metavoice-1b
+        text: {type: string, minLength: 1}
+        reference_audio_url:
+          type: string
+          nullable: true
+          description: file:// or http(s):// URL of a short reference clip
+            for zero-shot voice cloning.
+        reference_text:
+          type: string
+          nullable: true
+          description: Transcript of the reference audio. Required when the
+            system's registry entry sets requires_reference_text (cosyvoice2).
+        params:
+          type: object
+          additionalProperties: true
+          description: System-specific knobs (e.g. Tortoise preset, seed).
+        requested_by: {type: string, default: unknown}
+        callback_url: {type: string, nullable: true}
+    JobAccepted:
+      type: object
+      properties:
+        job_id: {type: string}
+        status: {type: string, enum: [queued]}
+        status_url: {type: string}
+    JobResult:
+      type: object
+      properties:
+        job_id: {type: string}
+        tts_system: {type: string}
+        status: {type: string, enum: [queued, running, succeeded, failed]}
+        created_at: {type: string, nullable: true}
+        started_at: {type: string, nullable: true}
+        finished_at: {type: string, nullable: true}
+        error: {type: string, nullable: true}
+        result:
+          type: object
+          nullable: true
+          description: On success — audio_url, duration_sec, sample_rate,
+            and the full GenerationMetadata (see docs/metadata-schema.md).

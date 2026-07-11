@@ -1,0 +1,120 @@
+# ExpertASD TTS generation pipeline — local full stack.
+# Build context is the repo root for every image so Dockerfiles can COPY both
+# shared/python and their own services/ subtree.
+#
+# GPU allocation uses the long-form device reservation (not the `gpus:`
+# shorthand) so it maps conceptually onto Kubernetes resources.requests later.
+# One distinct GPU per worker (0/1/2); 3 physical A100s available.
+
+x-worker-common: &worker-common
+  restart: unless-stopped
+  depends_on:
+    redis:
+      condition: service_healthy
+  environment: &worker-env
+    REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    OUTPUTS_DIR: /data/outputs
+    HF_HOME: /data/hf_cache
+    HF_TOKEN: ${HF_TOKEN:-}
+    PIPELINE_VERSION: ${PIPELINE_VERSION:-dev}
+    DATA_DISK_MIN_GB: ${DATA_DISK_MIN_GB:-5}
+  volumes:
+    - ${HF_CACHE_DIR:-/data/hf_cache}:/data/hf_cache
+    - ${DATA_ROOT:-/data/expertasd_tts_pipeline}/outputs:/data/outputs
+    # Reference clips for smoke tests, resolved by file:///data/fixtures/... URLs.
+    - ./data_fixtures/smoke:/data/fixtures:ro
+  healthcheck:
+    test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    interval: 15s
+    timeout: 5s
+    retries: 3
+    start_period: 600s
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    restart: unless-stopped
+    volumes:
+      - ${DATA_ROOT:-/data/expertasd_tts_pipeline}/redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "${GATEWAY_PORT:-8000}:8000"
+    environment:
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      OUTPUTS_DIR: /data/outputs
+      TTS_REGISTRY_PATH: /registry/tts_systems.yaml
+      PIPELINE_VERSION: ${PIPELINE_VERSION:-dev}
+    volumes:
+      - ${DATA_ROOT:-/data/expertasd_tts_pipeline}/outputs:/data/outputs
+      - ./shared/registry:/registry:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  worker-tortoise:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/tortoise/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: tortoise-tts
+      GPU_INDEX: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  worker-cosyvoice2:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/cosyvoice2/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: cosyvoice2
+      GPU_INDEX: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["1"]
+              capabilities: [gpu]
+
+  worker-metavoice:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/metavoice/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: metavoice-1b
+      GPU_INDEX: "2"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["2"]
+              capabilities: [gpu]

@@ -1,0 +1,5 @@
+{
+  "default": "The quick brown fox jumps over the lazy dog near the riverbank at dawn.",
+  "short": "This is a short synthesis test.",
+  "notes": "Reference clip reference_female_en.wav is espeak-ng generated (license-clean, reproducible, ~39s to satisfy MetaVoice-1B's 30s minimum). Regenerate with: espeak-ng -v en+f3 -s 145 -w reference_female_en.wav \"$(cat reference_female_en.txt) $(cat reference_female_en.txt)\""
+}
