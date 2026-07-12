@@ -73,7 +73,23 @@ def main() -> int:
                          "(required by systems like cosyvoice2)")
     ap.add_argument("--limit", type=int, help="process at most N clips")
     ap.add_argument("--requested-by", default="generate_from_dir")
+    # Generation knobs (passed through as `params`). MetaVoice: guidance-scale
+    # (lower => slower/less rushed, ~1.5-2.0), temperature (~0.7 steadier),
+    # top-p. CosyVoice2: speed (<1.0 slower). Unset knobs use model defaults.
+    ap.add_argument("--guidance-scale", type=float, help="MetaVoice: lower = slower/less rushed (default 3.0)")
+    ap.add_argument("--temperature", type=float, help="MetaVoice: sampling temperature (default 1.0; ~0.7 steadier)")
+    ap.add_argument("--top-p", type=float, help="MetaVoice: top-p (default 0.95)")
+    ap.add_argument("--speed", type=float, help="CosyVoice2: speech speed, <1.0 slower (default 1.0)")
     args = ap.parse_args()
+
+    knob_params = {
+        k: v for k, v in (
+            ("guidance_scale", args.guidance_scale),
+            ("temperature", args.temperature),
+            ("top_p", args.top_p),
+            ("speed", args.speed),
+        ) if v is not None
+    }
 
     local_dir = FIXTURES_ROOT / args.dir
     if not local_dir.is_dir():
@@ -104,6 +120,7 @@ def main() -> int:
             "tts_system": args.system,
             "text": text,
             "reference_audio_url": f"file://{CONTAINER_MOUNT}/{args.dir}/{clip.name}",
+            "params": knob_params,
             "requested_by": args.requested_by,
         }
         if args.reference_text_from_metadata:
