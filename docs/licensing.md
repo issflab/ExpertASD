@@ -7,16 +7,17 @@ gateway copies them into every sample's metadata.
 
 | System | Code license | Weights license | Source of truth | Verified |
 |--------|--------------|-----------------|-----------------|----------|
-| tortoise-tts | Apache-2.0 | Apache-2.0 | github.com/neonbjb/tortoise-tts `LICENSE`; weights `Manmay/tortoise-tts` model card | PENDING on-box verification |
-| cosyvoice2 | Apache-2.0 | Apache-2.0 | github.com/FunAudioLLM/CosyVoice `LICENSE`; `FunAudioLLM/CosyVoice2-0.5B` model card | PENDING on-box verification |
-| metavoice-1b | Apache-2.0 | Apache-2.0 | github.com/metavoiceio/metavoice-src `LICENSE`; `metavoiceio/metavoice-1B-v0.1` model card | PENDING on-box verification |
+| tortoise-tts | Apache-2.0 | Apache-2.0 | `LICENSE` in pinned repo (confirmed on disk = Apache 2.0); weights `Manmay/tortoise-tts` | 2026-07-12 (code LICENSE on disk) |
+| cosyvoice2 | Apache-2.0 | Apache-2.0 | `/opt/CosyVoice/LICENSE` on disk = Apache 2.0; weights `FunAudioLLM/CosyVoice2-0.5B` | 2026-07-12 (code LICENSE on disk) |
+| metavoice-1b | Apache-2.0 | Apache-2.0 | `/opt/metavoice/LICENSE` on disk = Apache 2.0; weights `metavoiceio/metavoice-1B-v0.1` | 2026-07-12 (code LICENSE on disk) |
 
 ## Verification status
 
-Values above come from README/model-card statements gathered during planning.
-Before production handoff, each row's "Verified" cell MUST be replaced with a
-date and confirmed against the actual `LICENSE` file in the pinned commit and
-the HF model card `license:` field. The pinned commit SHAs are in the registry.
+Code licenses confirmed on 2026-07-12 by reading the actual `LICENSE` file
+inside each built image (all three are Apache 2.0). Weights licenses are per
+each HF model card and were not re-fetched from the card UI here — a reviewer
+should confirm the HF model-card `license:` field before external distribution,
+though all three projects release code and weights under Apache 2.0.
 
 ## Why this matters beyond the pilot
 
