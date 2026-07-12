@@ -23,8 +23,12 @@ from pathlib import Path
 
 GATEWAY = "http://localhost:8000"
 FIXTURE_DIR = Path(__file__).resolve().parent.parent / "data_fixtures" / "smoke"
-REF_WAV = FIXTURE_DIR / "reference_female_en.wav"
+REF_WAV = FIXTURE_DIR / "reference_female_en.wav"           # ~20s (default)
+REF_WAV_LONG = FIXTURE_DIR / "reference_female_en_long.wav"  # ~39s
 REF_TXT = FIXTURE_DIR / "reference_female_en.txt"
+# Systems have conflicting reference-length needs: MetaVoice-1B requires >=30s,
+# CosyVoice2 rejects >30s. Route each to a fixture it accepts.
+LONG_REF_SYSTEMS = {"metavoice-1b"}
 POLL_TIMEOUT_SEC = 600
 TEXT = "The quick brown fox jumps over the lazy dog near the riverbank at dawn."
 
@@ -46,10 +50,11 @@ def _get(path: str) -> dict:
 
 
 def run_one(system: str) -> tuple[str, bool, str]:
+    ref_wav = REF_WAV_LONG if system in LONG_REF_SYSTEMS else REF_WAV
     payload = {
         "tts_system": system,
         "text": TEXT,
-        "reference_audio_url": f"file:///data/fixtures/{REF_WAV.name}",
+        "reference_audio_url": f"file:///data/fixtures/{ref_wav.name}",
         "requested_by": "smoke-test",
     }
     if REF_TXT.exists():

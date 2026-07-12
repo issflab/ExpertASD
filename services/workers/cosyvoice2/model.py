@@ -1,9 +1,11 @@
 """CosyVoice2 wrapper.
 
 inference_zero_shot(tts_text, prompt_text, prompt_wav) is a generator
-yielding {'tts_speech': tensor[1, S]} chunks; prompt audio is loaded at
-16kHz, output sample rate comes from the model config (24000 for
-CosyVoice2-0.5B). Requires a transcript of the reference audio.
+yielding {'tts_speech': tensor[1, S]} chunks. In this pinned commit prompt_wav
+is a FILE PATH — the frontend calls load_wav() on it internally at 16k and 24k
+— so we pass the reference path, not a pre-loaded tensor. Output sample rate
+comes from the model config (24000 for CosyVoice2-0.5B). Requires a transcript
+of the reference audio.
 """
 from __future__ import annotations
 
@@ -13,7 +15,6 @@ from typing import Any, Dict, Optional
 
 from expertasd_common.model_base import SynthOutput, TTSModel
 
-PROMPT_SAMPLE_RATE = 16000
 HF_REPO_ID = "FunAudioLLM/CosyVoice2-0.5B"
 
 
@@ -43,20 +44,18 @@ class CosyVoice2Model(TTSModel):
     ) -> SynthOutput:
         import torch
         import torchaudio
-        from cosyvoice.utils.file_utils import load_wav
 
         if reference_audio_path is None:
             raise ValueError("cosyvoice2 requires reference_audio_url")
         if not reference_text:
             raise ValueError("cosyvoice2 requires reference_text (transcript of the reference audio)")
         params = params or {}
-        prompt = load_wav(str(reference_audio_path), PROMPT_SAMPLE_RATE)
         chunks = [
             out["tts_speech"]
             for out in self.model.inference_zero_shot(
                 text,
                 reference_text,
-                prompt,
+                str(reference_audio_path),
                 stream=False,
                 speed=float(params.get("speed", 1.0)),
             )
