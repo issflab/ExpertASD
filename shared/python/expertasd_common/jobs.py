@@ -59,6 +59,12 @@ def run_synthesis(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
     latency = time.monotonic() - started
+    # Workers run as root; some models (e.g. MetaVoice) write output with 0600.
+    # Force world-readable so the file is usable outside the container.
+    try:
+        out_path.chmod(0o644)
+    except OSError:
+        pass
     gpu_index_raw = os.environ.get("GPU_INDEX")
     meta.output = OutputInfo(
         path=str(out_path),
