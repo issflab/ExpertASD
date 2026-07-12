@@ -22,6 +22,10 @@ class SynthesizeRequest(BaseModel):
     # Transcript of the reference audio. Required by systems whose registry
     # entry sets requires_reference_text (CosyVoice2 in the pilot).
     reference_text: Optional[str] = None
+    # Optional human-readable stem for the output dir / job id. When set it is
+    # used instead of the reference-audio basename (e.g. to name outputs after
+    # the text row rather than the reference clip).
+    label: Optional[str] = None
     params: Dict[str, Any] = Field(default_factory=dict)
     requested_by: str = "unknown"
     callback_url: Optional[str] = None

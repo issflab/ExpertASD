@@ -37,17 +37,18 @@ def load_registry() -> dict:
     return yaml.safe_load(REGISTRY_PATH.read_text())["systems"]
 
 
-def build_job_id(reference_audio_url: str | None) -> str:
-    """Readable, globally-unique job id: <reference>_<timestamp>_<short8>.
+def build_job_id(reference_audio_url: str | None, label: str | None = None) -> str:
+    """Readable, globally-unique job id: <stem>_<timestamp>_<short8>.
 
     Stored under outputs/<tts_system>/<job_id>/. The short8 uuid suffix
-    guarantees uniqueness; the reference stem + timestamp make it legible.
+    guarantees uniqueness; the stem + timestamp make it legible. The stem comes
+    from `label` when provided, else the reference-audio basename.
     """
-    stem = "noref"
-    if reference_audio_url:
-        base = reference_audio_url.rstrip("/").split("/")[-1]
-        base = base.rsplit(".", 1)[0]
-        stem = re.sub(r"[^A-Za-z0-9_-]", "-", base)[:60] or "ref"
+    source = label if label else (
+        reference_audio_url.rstrip("/").split("/")[-1].rsplit(".", 1)[0]
+        if reference_audio_url else "noref"
+    )
+    stem = re.sub(r"[^A-Za-z0-9_-]", "-", source)[:60] or "ref"
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
     return f"{stem}_{ts}_{uuid.uuid4().hex[:8]}"
 
@@ -88,7 +89,7 @@ def synthesize(req: SynthesizeRequest) -> JobAccepted:
     if entry.get("zero_shot") and not req.reference_audio_url:
         raise HTTPException(400, f"{req.tts_system} requires reference_audio_url for voice cloning")
 
-    job_id = build_job_id(req.reference_audio_url)
+    job_id = build_job_id(req.reference_audio_url, req.label)
     storage.job_dir(job_id, tts_system=req.tts_system, create=True)
     meta = GenerationMetadata(
         job_id=job_id,
