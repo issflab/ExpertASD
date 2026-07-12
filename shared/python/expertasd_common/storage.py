@@ -22,11 +22,22 @@ def outputs_dir() -> Path:
     return Path(os.environ.get(OUTPUTS_ENV, "/data/outputs"))
 
 
-def job_dir(job_id: str, create: bool = False) -> Path:
-    d = outputs_dir() / job_id
+def job_dir(job_id: str, tts_system: Optional[str] = None, create: bool = False) -> Path:
+    """Resolve a job's output directory: outputs/<tts_system>/<job_id>/.
+
+    Creating requires tts_system (the gateway knows it). Lookups by job_id
+    alone glob across systems, since job_id is globally unique.
+    """
     if create:
+        if tts_system is None:
+            raise ValueError("tts_system is required to create a job directory")
+        d = outputs_dir() / tts_system / job_id
         d.mkdir(parents=True, exist_ok=True)
-    return d
+        return d
+    matches = sorted(outputs_dir().glob(f"*/{job_id}"))
+    if matches:
+        return matches[0]
+    return outputs_dir() / "_unresolved" / job_id
 
 
 def metadata_path(job_id: str) -> Path:

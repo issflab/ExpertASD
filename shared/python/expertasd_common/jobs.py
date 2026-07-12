@@ -36,7 +36,7 @@ def run_synthesis(payload: Dict[str, Any]) -> Dict[str, Any]:
     meta.status = "running"
     storage.write_metadata(meta)
 
-    out_dir = storage.job_dir(job_id, create=True)
+    out_dir = storage.job_dir(job_id)  # gateway already created it
     ref_path: Optional[Path] = None
     if payload.get("reference_audio_url"):
         ref_path = storage.resolve_reference_audio(payload["reference_audio_url"], out_dir)

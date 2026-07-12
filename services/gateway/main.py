@@ -6,8 +6,10 @@ per-system RQ queue, and serves job status + generated audio.
 from __future__ import annotations
 
 import os
+import re
 import urllib.request
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 import yaml
@@ -33,6 +35,21 @@ app = FastAPI(title="ExpertASD TTS Gateway", version="0.1.0")
 
 def load_registry() -> dict:
     return yaml.safe_load(REGISTRY_PATH.read_text())["systems"]
+
+
+def build_job_id(reference_audio_url: str | None) -> str:
+    """Readable, globally-unique job id: <reference>_<timestamp>_<short8>.
+
+    Stored under outputs/<tts_system>/<job_id>/. The short8 uuid suffix
+    guarantees uniqueness; the reference stem + timestamp make it legible.
+    """
+    stem = "noref"
+    if reference_audio_url:
+        base = reference_audio_url.rstrip("/").split("/")[-1]
+        base = base.rsplit(".", 1)[0]
+        stem = re.sub(r"[^A-Za-z0-9_-]", "-", base)[:60] or "ref"
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+    return f"{stem}_{ts}_{uuid.uuid4().hex[:8]}"
 
 
 @app.get("/v1/health")
@@ -71,8 +88,8 @@ def synthesize(req: SynthesizeRequest) -> JobAccepted:
     if entry.get("zero_shot") and not req.reference_audio_url:
         raise HTTPException(400, f"{req.tts_system} requires reference_audio_url for voice cloning")
 
-    job_id = str(uuid.uuid4())
-    storage.job_dir(job_id, create=True)
+    job_id = build_job_id(req.reference_audio_url)
+    storage.job_dir(job_id, tts_system=req.tts_system, create=True)
     meta = GenerationMetadata(
         job_id=job_id,
         tts_system=req.tts_system,
@@ -120,7 +137,7 @@ def job_status(job_id: str) -> JobResult:
     error = meta.error
     if status == "succeeded" and meta.output is not None:
         result = {
-            "audio_url": f"/outputs/{job_id}/audio.wav",
+            "audio_url": f"/outputs/{meta.tts_system}/{job_id}/audio.wav",
             "duration_sec": meta.output.duration_sec,
             "sample_rate": meta.output.sample_rate,
             "metadata": meta.model_dump(),
