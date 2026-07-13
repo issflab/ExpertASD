@@ -39,6 +39,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+import _params  # scripts/_params.py (same directory)
+
 GATEWAY = "http://localhost:8000"
 FIXTURES_ROOT = Path(__file__).resolve().parent.parent / "data_fixtures" / "smoke"
 CONTAINER_MOUNT = "/data/fixtures"
@@ -87,15 +89,16 @@ def main() -> int:
     ap.add_argument("--seed", type=int, default=42, help="RNG seed for reference sampling")
     ap.add_argument("--limit", type=int, help="process at most N rows")
     ap.add_argument("--requested-by", default="generate_from_metadata")
-    ap.add_argument("--guidance-scale", type=float, help="MetaVoice: lower = slower/less rushed")
-    ap.add_argument("--temperature", type=float, help="MetaVoice: sampling temperature")
-    ap.add_argument("--top-p", type=float, help="MetaVoice: top-p")
-    ap.add_argument("--speed", type=float, help="CosyVoice2: speech speed (<1.0 slower)")
+    # Per-system generation params come from a client-side config keyed by
+    # --system (config/client_params.yaml), not per-system CLI flags. Use
+    # --param KEY=VALUE for a one-off override of a single key.
+    ap.add_argument("--params-config", default=str(_params.DEFAULT_CONFIG),
+                    help="YAML of per-system client params (default: config/client_params.yaml)")
+    ap.add_argument("--param", action="append", metavar="KEY=VALUE",
+                    help="one-off param override, repeatable (e.g. --param guidance_scale=1.5)")
     args = ap.parse_args()
 
-    knob_params = {k: v for k, v in (
-        ("guidance_scale", args.guidance_scale), ("temperature", args.temperature),
-        ("top_p", args.top_p), ("speed", args.speed)) if v is not None}
+    knob_params = _params.resolve_params(Path(args.params_config), args.system, args.param)
 
     ref_dir = FIXTURES_ROOT / args.reference_dir
     if not ref_dir.is_dir():

@@ -25,7 +25,10 @@ make smoke         # end-to-end test across all 3 systems
 - `services/gateway/` — FastAPI entrypoint (the only host-exposed service).
 - `services/workers/<system>/` — one containerized worker per TTS system.
 - `shared/python/expertasd_common/` — shared schemas, storage, queue, health.
-- `shared/registry/tts_systems.yaml` — machine-readable system registry.
+- `shared/registry/tts_systems.yaml` — machine-readable system registry, incl.
+  per-system `default_params` (server-side defaults the gateway applies).
+- `config/client_params.yaml` — client-side per-system params the scripts send
+  (override the registry defaults; `--param KEY=VALUE` overrides this per key).
 - `shared/schemas/openapi.yaml` — API contract.
 - `docs/` — architecture, metadata schema, licensing, runbook, onboarding,
   resource requirements.

@@ -1,0 +1,23 @@
+# Client-side per-system generation parameters for the scripts in scripts/.
+# A script looks up the block matching its --system and sends it as the
+# request's params.
+#
+# Precedence (lowest to highest):
+#   registry default_params (server) < THIS FILE < --param KEY=VALUE (CLI)
+#
+# So values here override the server-side defaults in
+# shared/registry/tts_systems.yaml for script-driven runs, and a one-off
+# --param on the command line overrides this file in turn. Only keys the
+# target system's model.py actually reads have any effect.
+
+systems:
+  metavoice-1b:
+    guidance_scale: 2.0      # lower = slower / less rushed (upstream default 3.0)
+    temperature: 0.8         # lower = steadier (upstream default 1.0)
+    top_p: 0.95
+
+  cosyvoice2:
+    speed: 1.0               # <1.0 slower, >1.0 faster
+
+  tortoise-tts:
+    preset: fast             # ultra_fast | fast | standard | high_quality
