@@ -20,7 +20,7 @@ worker fills in `output` and `generation` and sets status `succeeded`/`failed`.
 | `zero_shot` | Whether the sample used reference-audio cloning |
 | `reference_audio` | `{provided, source, reference_text, sha256}` |
 | `text` | Input text synthesized |
-| `params` | System-specific knobs actually used |
+| `params` | Effective system-specific knobs actually used (registry `default_params` merged with the request's params, request winning per key) |
 | `output` | `{path, sample_rate, duration_sec, sha256}` |
 | `generation` | `{requested_at, latency_sec, worker_host, gpu_index}` |
 | `pipeline_version` | This repo's version/SHA (from `PIPELINE_VERSION`) |

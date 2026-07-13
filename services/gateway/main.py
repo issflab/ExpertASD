@@ -89,6 +89,10 @@ def synthesize(req: SynthesizeRequest) -> JobAccepted:
     if entry.get("zero_shot") and not req.reference_audio_url:
         raise HTTPException(400, f"{req.tts_system} requires reference_audio_url for voice cloning")
 
+    # Merge registry default_params under the request's params (request wins per
+    # key). The effective set is what the worker uses and what we record.
+    effective_params = {**(entry.get("default_params") or {}), **req.params}
+
     job_id = build_job_id(req.reference_audio_url, req.label)
     storage.job_dir(job_id, tts_system=req.tts_system, create=True)
     meta = GenerationMetadata(
@@ -106,7 +110,7 @@ def synthesize(req: SynthesizeRequest) -> JobAccepted:
             reference_text=req.reference_text,
         ),
         text=req.text,
-        params=req.params,
+        params=effective_params,
         pipeline_version=PIPELINE_VERSION,
         status="queued",
     )
@@ -120,7 +124,7 @@ def synthesize(req: SynthesizeRequest) -> JobAccepted:
             "text": req.text,
             "reference_audio_url": req.reference_audio_url,
             "reference_text": req.reference_text,
-            "params": req.params,
+            "params": effective_params,
         },
     )
     return JobAccepted(job_id=job_id, status_url=f"/v1/jobs/{job_id}")

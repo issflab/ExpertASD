@@ -4,6 +4,11 @@
 #
 # license_verified_at dates reflect when the license was last checked against
 # the upstream repo's actual LICENSE file / model card (see docs/licensing.md).
+#
+# default_params: per-system generation parameters the gateway merges UNDER each
+# request's params (request params override these per key). Edit these to change
+# the standing defaults for every consumer. Only keys the system's model.py
+# reads have any effect.
 
 systems:
   tortoise-tts:
@@ -15,6 +20,8 @@ systems:
     vocoder: UnivNet
     zero_shot: true
     requires_reference_text: false
+    default_params:
+      preset: fast          # tortoise quality/speed preset: ultra_fast|fast|standard|high_quality
     upstream_repo: https://github.com/neonbjb/tortoise-tts
     upstream_commit: 8a2563ecabe93c4fb626f876dd0c52c966edef2f
     license:
@@ -32,6 +39,8 @@ systems:
     vocoder: HiFiGAN
     zero_shot: true
     requires_reference_text: true
+    default_params:
+      speed: 1.0            # cosyvoice2 speech speed; <1.0 slower, >1.0 faster
     upstream_repo: https://github.com/FunAudioLLM/CosyVoice
     upstream_commit: 074ca6dc9e80a2f424f1f74b48bdd7d3fea531cc
     license:
@@ -49,6 +58,13 @@ systems:
     vocoder: multi-band diffusion
     zero_shot: true
     requires_reference_text: false
+    default_params:
+      # Upstream defaults are guidance_scale 3.0 / temperature 1.0, which sound
+      # rushed; these are a slower, steadier profile. Lower guidance_scale =
+      # slower/less rushed (keep target text short at low values).
+      guidance_scale: 2.0
+      temperature: 0.8
+      top_p: 0.95
     upstream_repo: https://github.com/metavoiceio/metavoice-src
     upstream_commit: de3fa211ac4621e03a5f990651aeecc64da418f5
     license:

@@ -18,9 +18,12 @@ For the target repo, confirm from the pinned files:
 
 ## 2. Register it
 
-Add an entry to `shared/registry/tts_systems.yaml` with `queue`, `ar_nar`,
-`tts_type`, `vocoder`, `zero_shot`, `requires_reference_text`, `upstream_repo`,
-`upstream_commit` (a specific SHA — never a branch), and the `license` block.
+Add an entry to `shared/registry/tts_systems.yaml` with `queue`, `worker_host`,
+`ar_nar`, `tts_type`, `vocoder`, `zero_shot`, `requires_reference_text`,
+`upstream_repo`, `upstream_commit` (a specific SHA — never a branch), the
+`license` block, and an optional `default_params` block (per-system generation
+parameters the gateway merges under each request; request params override them
+per key). Only keys the system's `model.py` reads have any effect.
 
 ## 3. Create the worker
 
