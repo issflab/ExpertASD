@@ -27,6 +27,24 @@ Examples:
   # Long-term: every row in a metadata file
   python3 scripts/generate_from_metadata.py \
       --reference-dir trump_long --system metavoice-1b --metadata my_lines.csv
+
+  # with limit: generate for n rows in the metadata
+  python3 scripts/generate_from_metadata.py  \
+      --reference-dir trump_long --system \
+      metavoice-1b --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv --limit 5
+
+  # Tortoise: reference clip can be any length, no reference_text needed
+  python3 scripts/generate_from_metadata.py \
+      --reference-dir trump --system tortoise-tts \
+      --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv --limit 5
+
+  # CosyVoice2: reference must be <=30s AND needs the reference clip's own
+  # transcript (reference_text), so use a short-clip pool and pass
+  # --reference-metadata mapping each reference clip to its transcript.
+  python3 scripts/generate_from_metadata.py \
+      --reference-dir trump --system cosyvoice2 \
+      --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv \
+      --reference-metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv --limit 5
 """
 from __future__ import annotations
 

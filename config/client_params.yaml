@@ -12,8 +12,8 @@
 
 systems:
   metavoice-1b:
-    guidance_scale: 2.0      # lower = slower / less rushed (upstream default 3.0)
-    temperature: 0.8         # lower = steadier (upstream default 1.0)
+    guidance_scale: 3.0      # lower = slower / less rushed (upstream default 3.0)
+    temperature: 1         # lower = steadier (upstream default 1.0)
     top_p: 0.95
 
   cosyvoice2:
