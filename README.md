@@ -27,6 +27,46 @@ docker compose ps  # wait for all services "healthy"
 make smoke         # end-to-end test across all systems
 ```
 
+## Generate speech
+
+**Via `generate_from_metadata.py`** (batch, reference sampled from a fixtures
+pool, target text from a metadata CSV):
+
+```bash
+python3 scripts/generate_from_metadata.py \
+    --reference-dir trump_long --system metavoice-1b \
+    --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv \
+    --limit 5
+```
+
+See the script's own docstring (`python3 scripts/generate_from_metadata.py -h`)
+for more examples, including systems that require `--reference-metadata`
+(cosyvoice2, maskgct, fish-speech — see the "Reference-audio length
+constraints" table in [docs/resource-requirements.md](docs/resource-requirements.md)).
+
+**Via the gateway API directly** (single request, e.g. `curl`):
+
+```bash
+curl -s -X POST localhost:8000/v1/synthesize \
+    -H 'Content-Type: application/json' \
+    -d '{
+          "tts_system": "metavoice-1b",
+          "text": "The quick brown fox jumps over the lazy dog.",
+          "reference_audio_url": "file:///data/fixtures/reference_female_en.wav",
+          "requested_by": "manual-test"
+        }'
+# => {"job_id": "...", "status": "queued", "status_url": "/v1/jobs/..."}
+
+curl -s localhost:8000/v1/jobs/<job_id> | python3 -m json.tool
+# poll until "status": "succeeded"; result.audio_url is servable at
+# localhost:8000<audio_url>
+```
+
+For a system with `requires_reference_text: true` (e.g. `cosyvoice2`), add
+`"reference_text": "<transcript of the reference clip>"` to the payload —
+the gateway returns `400` without it. Full request/response shape in
+[shared/schemas/openapi.yaml](shared/schemas/openapi.yaml).
+
 ## Layout
 
 - `services/gateway/` — FastAPI entrypoint (the only host-exposed service).
