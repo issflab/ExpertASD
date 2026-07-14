@@ -64,3 +64,33 @@ python3 scripts/smoke_test.py --system <id>
 
 Add measured VRAM/latency/disk to `resource-requirements.md` and verify the
 license row in `licensing.md`.
+
+## Deferred systems
+
+Some candidates in `selected_tts_systems.csv` don't fit the recipe above
+as-is and are intentionally on hold rather than dropped.
+
+### MatchaTTS
+
+`zero_shot: No` in the registry/CSV isn't a minor caveat here — MatchaTTS's
+official checkpoints are flow-matching acoustic models trained on a *fixed*
+speaker set (e.g. LJSpeech single-speaker, or VCTK/LibriTTS speaker-ID
+embeddings). There is no reference-audio encoder, so it cannot take an
+arbitrary `reference_audio_url` at request time the way Tortoise-TTS,
+CosyVoice2, and MetaVoice-1B do. Onboarding it as a normal worker would
+silently break the per-request cloning contract.
+
+Two approaches to revisit if/when this is picked back up:
+
+1. **Speaker-embedding path** — bolt a d-vector/ECAPA-style reference-audio
+   speaker encoder onto Matcha's decoder to give it zero-shot conditioning
+   (adopt an existing fork that does this, or implement it).
+2. **Two-stage pipeline** — use Matcha for text→mel/prosody only, then run
+   its output through a separate voice-conversion model conditioned on the
+   target speaker's reference clip. Decouples cloning from Matcha entirely,
+   but adds a second model (and a second failure mode) to the worker.
+
+Either path is a real architecture change (new conditioning mechanism, or a
+second model in the request path), not a config-only addition like the
+other systems in this doc — treat it as its own design pass rather than
+step-by-step recipe above.

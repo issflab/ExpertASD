@@ -118,3 +118,159 @@ services:
             - driver: nvidia
               device_ids: ["2"]
               capabilities: [gpu]
+
+  worker-xtts:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/xtts/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: xtts
+      GPU_INDEX: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 0 with worker-tortoise.
+              # Measured resident VRAM ~2.2 GB, fits the headroom on a 40 GB
+              # card alongside Tortoise's ~13-20 GB. See architecture.md.
+              device_ids: ["0"]
+              capabilities: [gpu]
+    healthcheck:
+      # Longer start_period than worker-common's 600s: coqui-tts's own weight
+      # downloader is single-threaded/non-resumable (unlike the HF-hub
+      # downloader the other 3 workers use) and was measured taking ~22 min
+      # cold on this network on one run — see resource-requirements.md.
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 1800s
+
+  worker-styletts2:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/styletts2/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: styletts2
+      GPU_INDEX: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 1 with worker-cosyvoice2.
+              # StyleTTS2 is a small model (LibriTTS checkpoint ~350 MB);
+              # CosyVoice2's own resident footprint (~4.3 GB) leaves large
+              # headroom on the 40 GB card. See architecture.md.
+              device_ids: ["1"]
+              capabilities: [gpu]
+
+  worker-f5tts:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/f5tts/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: f5-tts
+      GPU_INDEX: "2"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 2 with worker-metavoice,
+              # which has the most headroom of the three dedicated GPUs
+              # (~10.4 GB resident of 40 GB). See architecture.md.
+              device_ids: ["2"]
+              capabilities: [gpu]
+
+  worker-maskgct:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/maskgct/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: maskgct
+      GPU_INDEX: "1"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 1 with worker-cosyvoice2
+              # and worker-styletts2 (a 3-way share), which together have the
+              # most headroom of any GPU (~34 GB free before MaskGCT). See
+              # architecture.md.
+              device_ids: ["1"]
+              capabilities: [gpu]
+
+  worker-fishspeech:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/fishspeech/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: fish-speech
+      GPU_INDEX: "2"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 2 with worker-metavoice
+              # and worker-f5tts, which currently have the most headroom of
+              # any GPU (~26 GB free before Fish-Speech). See architecture.md.
+              device_ids: ["2"]
+              capabilities: [gpu]
+
+  worker-ssrspeech:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/ssrspeech/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: ssrspeech
+      GPU_INDEX: "0"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; shares index 0 with worker-tortoise and
+              # worker-xtts. GPU 0 has only 2 occupants (vs 3 on GPU 1/2), so
+              # this balances the load across GPUs rather than stacking a 4th
+              # worker onto an already 3-way-shared card. See architecture.md.
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  worker-llasa:
+    <<: *worker-common
+    build:
+      context: .
+      dockerfile: services/workers/llasa/Dockerfile
+    environment:
+      <<: *worker-env
+      QUEUE_NAME: llasa
+      GPU_INDEX: "2"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # Only 3 physical GPUs; all three are already 3-way shares and
+              # GPU 0 (Tortoise+XTTS+SSR-Speech) is nearly full (~10 GB free).
+              # GPU 2 (MetaVoice+F5-TTS+Fish-Speech) has marginally more
+              # headroom than GPU 1, and LLASA is a compact ~1B-param model
+              # expected to have a light footprint — first 4-way GPU share
+              # in this pipeline. See architecture.md.
+              device_ids: ["2"]
+              capabilities: [gpu]

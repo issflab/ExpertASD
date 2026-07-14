@@ -6,9 +6,16 @@ anti-spoofing research). Each TTS system runs in its own container behind a
 single gateway and a per-system job queue.
 
 **Pilot scope:** 3 systems — Tortoise-TTS, CosyVoice2, MetaVoice-1B (all
-zero-shot voice cloning, all Apache-2.0). The pattern generalizes to the other
-12 candidate systems in `selected_tts_systems.csv`; see
-[docs/adding-a-new-tts-system.md](docs/adding-a-new-tts-system.md).
+zero-shot voice cloning, all Apache-2.0). **7 more onboarded:** XTTS-v2,
+StyleTTS2, F5-TTS, MaskGCT, Fish-Speech, SSR-Speech, LLASA — all zero-shot,
+all with some form of non-commercial or otherwise restricted weights license
+(several different flavors: CPML, CC-BY-NC-4.0, CC-BY-NC-SA-4.0, and an
+undocumented disclosure condition). **Read
+[docs/licensing.md](docs/licensing.md) before using any generated audio
+outside this project's academic research scope** — it has the full
+per-system license ledger and the reasoning behind each. The pattern
+generalizes to the remaining candidate systems in `selected_tts_systems.csv`;
+see [docs/adding-a-new-tts-system.md](docs/adding-a-new-tts-system.md).
 
 ## Quick start
 
@@ -17,7 +24,7 @@ make init          # create .env + /data dirs (review .env after)
 make build         # build images (long first run; see docs/resource-requirements.md)
 make up            # start the stack
 docker compose ps  # wait for all services "healthy"
-make smoke         # end-to-end test across all 3 systems
+make smoke         # end-to-end test across all systems
 ```
 
 ## Layout

@@ -72,3 +72,261 @@ systems:
       weights_license: Apache-2.0
       license_verified_at: "2026-07-11"
       notes: ""
+
+  xtts:
+    display_name: XTTS-v2
+    queue: xtts
+    worker_host: worker-xtts
+    ar_nar: NAR
+    tts_type: [llm]
+    vocoder: HiFiGAN / iSTFTNet
+    zero_shot: true
+    requires_reference_text: false
+    default_params:
+      language: en           # ISO 639-1; XTTS-v2 supports 17 languages
+      temperature: 0.65      # upstream default; lower = steadier
+      speed: 1.0             # <1.0 slower, >1.0 faster
+    # Upstream is idiap/coqui-ai-TTS, the actively maintained fork of the
+    # unmaintained coqui-ai/TTS; installed via its PyPI release
+    # (coqui-tts==0.27.5). upstream_commit is the source commit for that
+    # release tag, recorded here for provenance/audit like the other systems.
+    upstream_repo: https://github.com/idiap/coqui-ai-TTS
+    upstream_commit: 29b391cbd7ebf599e85b5232958daf39987a08e3
+    license:
+      code_license: MPL-2.0
+      weights_license: "Coqui Public Model License 1.0.0 (CPML) - non-commercial only"
+      license_verified_at: "2026-07-13"
+      notes: >-
+        CPML permits personal research/learning use and non-commercial R&D
+        testing, which covers this project; it does NOT permit any use that
+        receives direct or indirect payment. Do not use for anything
+        commercial without a separate license from a CPML rights holder.
+
+  styletts2:
+    display_name: StyleTTS2
+    queue: styletts2
+    worker_host: worker-styletts2
+    ar_nar: NAR
+    tts_type: [diffusion]
+    vocoder: HiFiGAN / iSTFTNet
+    zero_shot: true
+    requires_reference_text: false
+    default_params:
+      # Upstream demo notebook defaults (Demo/Inference_LibriTTS.ipynb).
+      alpha: 0.3              # timbre: how much of the diffusion-sampled style vs. the reference (0=all reference)
+      beta: 0.7                # prosody: same tradeoff for the prosody half of the style vector
+      diffusion_steps: 5       # more steps = more diverse/slower; upstream shows 5-10
+      embedding_scale: 1       # classifier-free guidance scale; higher = more emotional/text-conditioned
+    # Not pip-installable — a research codebase meant to be run from its own
+    # repo root, cloned into /opt/StyleTTS2 (see Dockerfile) rather than
+    # `pip install`ed. Last commit March 2024; frozen but functional when
+    # pinned, same category as Tortoise/MetaVoice.
+    upstream_repo: https://github.com/yl4579/StyleTTS2
+    upstream_commit: 5cedc71c333f8d8b8551ca59378bdcc7af4c9529
+    license:
+      code_license: MIT
+      weights_license: "Not formally licensed (no LICENSE/model-card license tag on the HF weights repo); governed by the code repo's MIT license plus an informal usage condition"
+      license_verified_at: "2026-07-13"
+      notes: >-
+        Upstream README: "you agree to inform the listeners that the speech
+        samples are synthesized by the pre-trained models, unless you have
+        the permission to use the voice you synthesize" — a disclosure
+        condition, not a legal non-commercial restriction like CPML. Verify
+        this generated audio's provenance is always disclosed/labeled as
+        synthetic in any downstream use.
+
+  f5-tts:
+    display_name: F5-TTS
+    queue: f5-tts
+    worker_host: worker-f5tts
+    ar_nar: NAR
+    tts_type: [diffusion, flow]
+    vocoder: Vocos
+    zero_shot: true
+    # Optional, not required: if omitted, upstream auto-transcribes the
+    # reference via a Whisper ASR pipeline (extra ~1.6 GB model, lazily
+    # downloaded on first use of that path). Pass it when known for both
+    # quality and to avoid that extra download.
+    requires_reference_text: false
+    default_params:
+      nfe_step: 32            # ODE solver function evaluations; more = higher quality/slower
+      cfg_strength: 2          # classifier-free guidance strength
+      speed: 1.0                # <1.0 slower, >1.0 faster
+    # Proper, actively-maintained PyPI release (unlike StyleTTS2) — installed
+    # via `pip install f5-tts`. upstream_commit is the source commit for the
+    # matching GitHub tag, recorded for provenance/audit like the other systems.
+    upstream_repo: https://github.com/SWivid/F5-TTS
+    upstream_commit: 91f499635cb4f8b8a926e83f1839f5338bc2ef87
+    license:
+      code_license: MIT
+      weights_license: "CC-BY-NC-4.0 - non-commercial only"
+      license_verified_at: "2026-07-13"
+      notes: >-
+        Weights are CC-BY-NC-4.0 because the base model was trained on
+        Emilia, an in-the-wild non-commercially-licensed dataset (per
+        upstream README). Same non-commercial-only category as XTTS's CPML,
+        different named license. Do not use for anything commercial.
+
+  maskgct:
+    display_name: MaskGCT
+    queue: maskgct
+    worker_host: worker-maskgct
+    ar_nar: NAR
+    tts_type: [transformer, llm]
+    vocoder: Vocos
+    zero_shot: true
+    requires_reference_text: true  # prompt_text is a required positional arg upstream
+    default_params:
+      language: en             # source/target language for phonemization (same value used for both by default)
+      n_timesteps: 25           # t2s diffusion sampling steps; more = higher quality/slower
+      cfg: 2.5                  # classifier-free guidance strength
+      rescale_cfg: 0.75         # CFG rescale factor
+    # Not pip-installable — a large multi-model monorepo (Amphion) with
+    # cross-package imports (utils.util, models.codec.*), cloned into
+    # /opt/Amphion rather than `pip install`ed, same category as StyleTTS2
+    # but bigger: 5 separate checkpoint components (semantic codec, acoustic
+    # codec, t2s, 2x s2a) plus facebook/w2v-bert-2.0 as a semantic encoder.
+    upstream_repo: https://github.com/open-mmlab/Amphion
+    upstream_commit: 26f6883110181f1dbfe95c70a7c7dbaf4de5f42a
+    license:
+      code_license: MIT
+      weights_license: "CC-BY-NC-4.0 - non-commercial only"
+      license_verified_at: "2026-07-13"
+      notes: >-
+        Weights are CC-BY-NC-4.0, same as F5-TTS and for the same reason
+        (trained on Emilia). The Amphion codebase's own top-level license
+        notice describes the repo as usable commercially, but that refers to
+        the code only — this specific pretrained checkpoint's HF model card
+        declares cc-by-nc-4.0 for the weights. Do not use for anything
+        commercial.
+
+  fish-speech:
+    display_name: Fish-Speech
+    queue: fish-speech
+    worker_host: worker-fishspeech
+    ar_nar: AR
+    tts_type: [transformer, llm]
+    vocoder: Firefly-GAN / FF-GAN
+    zero_shot: true
+    requires_reference_text: true  # ServeReferenceAudio.text has no default upstream
+    default_params:
+      max_new_tokens: 1024
+      top_p: 0.7
+      repetition_penalty: 1.2
+      temperature: 0.7
+    # Deliberately pinned to v1.5.1, NOT current main. Upstream rebranded to
+    # "Fish Audio S2" (main, March 2026) under a license that restricts the
+    # CODE itself to research/non-commercial use, unlike every other system
+    # here. v1.5.1 is the version selected_tts_systems.csv refers to and
+    # keeps the familiar split-license shape (permissive code, non-commercial
+    # weights). Not pip-installable as a published package but has a real
+    # pyproject.toml, so `pip install /opt/fish-speech` works cleanly.
+    upstream_repo: https://github.com/fishaudio/fish-speech
+    upstream_commit: 58046eaa1a4cefb0c8cc3a3a667b34186ea02dde
+    license:
+      code_license: Apache-2.0
+      weights_license: "CC-BY-NC-SA-4.0 - non-commercial only, share-alike"
+      license_verified_at: "2026-07-13"
+      notes: >-
+        Verified against the v1.5.1 tag specifically, not current main:
+        main's LICENSE (dated 2026-03-07) is the "Fish Audio Research
+        License", which covers the code too and is considerably more
+        restrictive (no commercial use of the codebase itself, not just
+        weights/output). v1.5.1's weights are CC-BY-NC-SA-4.0 per the
+        fishaudio/fish-speech-1.5 HF model-card tag — non-commercial like
+        XTTS/F5-TTS/MaskGCT, plus a share-alike condition the others don't
+        have. Do not use for anything commercial; if redistributing
+        derivatives, they must carry the same license.
+
+  ssrspeech:
+    display_name: SSR-Speech
+    queue: ssrspeech
+    worker_host: worker-ssrspeech
+    ar_nar: AR
+    tts_type: [transformer]
+    vocoder: Transformer
+    zero_shot: true
+    # reference_text is never used: upstream always auto-derives the
+    # reference transcript via WhisperX internally (its own --orig_transcript
+    # CLI arg is dead code, documented upstream as "not use now, a whisperx
+    # model will automatically do this"). Caller-supplied reference_text is
+    # accepted but silently ignored by model.py.
+    requires_reference_text: false
+    default_params:
+      prompt_length: 3        # seconds of reference audio to actually use (word-boundary-aware cut)
+      cfg_coef: 1.5            # classifier-free guidance strength
+      cfg_stride: 5             # matches upstream's own TTS-mode example (not its argparse default of 1)
+      top_p: 0.8
+      temperature: 1
+      stop_repetition: 2
+      aug_text: true
+      use_watermark: false     # upstream defaults this on for TTS demos; off here to match every other system's unwatermarked output
+    # A speech-editing model repurposed for zero-shot TTS (masks/fills a span
+    # right after the reference), not a from-scratch TTS design like the
+    # other systems. Repo dormant since 2025-01-01 but functional when
+    # pinned. Not pip-installable — cloned into /opt/SSR-Speech, run with cwd
+    # there (same pattern as StyleTTS2/MaskGCT). Shares MetaVoice's exact
+    # torch==2.1.0/xformers==0.0.22/audiocraft dependency stack.
+    upstream_repo: https://github.com/WangHelin1997/SSR-Speech
+    upstream_commit: 097c3c4f8c08acd7b431f095fa0f10e3151075c1
+    license:
+      code_license: MIT
+      weights_license: "CC-BY-NC-SA-4.0 - non-commercial only, share-alike"
+      license_verified_at: "2026-07-14"
+      notes: >-
+        Weights (westbrook/SSR-Speech-English) are CC-BY-NC-SA-4.0 per the HF
+        model-card tag — same category as Fish-Speech (non-commercial,
+        share-alike). Note: some code under ./models/modules and
+        data/tokenizer.py is Apache-2.0, and the phonemizer dependency is
+        GPLv3 — fine for this project's internal, non-distributed research
+        use (GPL copyleft obligations trigger on distribution, not on
+        internal use), but relevant if this pipeline is ever redistributed.
+        Output is also watermarked if use_watermark=true (a built-in safety
+        feature from the paper) — left off by default here.
+
+  llasa:
+    display_name: LLASA
+    queue: llasa
+    worker_host: worker-llasa
+    ar_nar: AR
+    tts_type: [transformer, llm]
+    vocoder: Vocos
+    zero_shot: true
+    requires_reference_text: true  # prompt_text is concatenated into the input; no ASR fallback
+    default_params:
+      # Upstream's Feb 2025 model-card default was temperature=0.8/top_p=1.0;
+      # a 2026-05-10 update note recommends these as "more stable".
+      temperature: 0.9
+      top_p: 0.95
+      max_length: 2048        # upstream trained with this max sequence length
+      # Not present upstream at all — its own example sets no repetition
+      # control, which let generation degenerate (audible as a held/
+      # stuttered final sound, e.g. "immediately" -> "...eeeeeee") and/or
+      # run needlessly long. Confirmed via real usage; fixes both.
+      repetition_penalty: 1.2
+    # No upstream code repo to clone: LLaSA_training
+    # (github.com/zhenye234/LLaSA_training) contains only training/finetuning
+    # scripts, no inference code — the runnable model is a standard HF
+    # `transformers.AutoModelForCausalLM` checkpoint (a LLaMA-3.2-1B
+    # fine-tune) plus a separate small pip package (xcodec2, MIT) for the
+    # speech codec. upstream_repo/commit here pin the two HF model
+    # repos' revisions (via from_pretrained(revision=...)), not a git clone.
+    upstream_repo: https://huggingface.co/HKUSTAudio/Llasa-1B
+    upstream_commit: cef8ce6a6eea3b593c5b28868d2391ec15eb9058
+    license:
+      code_license: "MIT (xcodec2 package) — no single repo license applies; see notes"
+      weights_license: "CC-BY-NC-4.0 - non-commercial only"
+      license_verified_at: "2026-07-14"
+      notes: >-
+        Both HKUSTAudio/Llasa-1B and HKUSTAudio/xcodec2 weights are
+        CC-BY-NC-4.0 per their HF model-card tags — same category as
+        F5-TTS/MaskGCT. The model card's own disclaimer is unusually blunt:
+        "prohibits free commercial use because of ethics and privacy
+        concerns; detected violations will result in legal consequences."
+        There is no single "code license" the way other systems have one
+        (no cloned repo runs here) — the only actual code artifact we
+        install, the xcodec2 PyPI package, is MIT; the rest is standard
+        `transformers` (Apache-2.0) loading a public checkpoint. Reference
+        audio must be 16kHz (per upstream: "only 16khz speech support!");
+        model.py resamples automatically rather than trusting callers to
+        supply pre-resampled clips.

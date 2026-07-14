@@ -45,7 +45,8 @@ The healthcheck will also recycle a worker whose process has exited.
 
 ## Disk (shared, near-full volume)
 
-`/data` is a shared lab volume (~70GB free of 5.9TB). Each worker runs
+`/data` is a shared lab volume (thin margin, tens of GB free of 5.9TB — check
+`df -h /data`, it moves as other lab projects write to it). Each worker runs
 `check_data_disk.sh` at startup and refuses to start if free space is below
 `DATA_DISK_MIN_GB` (default 5). Monitor during first-run downloads:
 
@@ -67,6 +68,14 @@ find /data/expertasd_tts_pipeline/outputs -mindepth 1 -maxdepth 1 -type d -mtime
 
 ## Weights cache
 
-Weights live under `/data/hf_cache/expertasd_models/` (Tortoise, CosyVoice2) and
-the standard HF cache under `/data/hf_cache` (MetaVoice via `snapshot_download`).
-Deleting these forces a re-download on next start.
+Weights live under `/data/hf_cache/expertasd_models/` (Tortoise, CosyVoice2,
+XTTS, StyleTTS2, F5-TTS, Fish-Speech) and the standard HF cache under
+`/data/hf_cache/hub` (MetaVoice via `snapshot_download`; MaskGCT and
+SSR-Speech via plain `hf_hub_download`/symlinked-into-hub-cache calls, which
+land under `models--amphion--MaskGCT`, `models--facebook--w2v-bert-2.0`, and
+`models--westbrook--SSR-Speech-English` respectively; SSR-Speech's WhisperX
+alignment/VAD models cache separately under whisperx's/torch hub's own
+default locations). LLASA's checkpoints (`HKUSTAudio/Llasa-1B`,
+`HKUSTAudio/xcodec2`) also land in the standard hub cache via `transformers`'
+own `from_pretrained`, reusing the already-cached `facebook/w2v-bert-2.0`
+from MaskGCT. Deleting these forces a re-download on next start.

@@ -29,9 +29,15 @@ worker fills in `output` and `generation` and sets status `succeeded`/`failed`.
 
 ## Why the license block is always present
 
-All three pilot systems are Apache-2.0, so the block is uniform today. It exists
-from day one because several of the other 12 candidate systems (see
+The 3 pilot systems are all Apache-2.0, but every system onboarded since
+carries some non-commercial or restricted weights license — XTTS (CPML),
+StyleTTS2 (no formal license, just a disclosure condition), F5-TTS/MaskGCT/
+LLASA (CC-BY-NC-4.0), and Fish-Speech/SSR-Speech (CC-BY-NC-SA-4.0, from two
+unrelated lineages) — the block exists from day one precisely so this
+kind of difference is recorded per sample rather than assumed uniform. See
+`licensing.md` for the full ledger and reasoning behind each. Several of
+the remaining candidate systems (see
 `../selected_tts_systems.csv`) carry non-commercial (CC-BY-NC) or no-derivative
-(CC-BY-NC-ND) terms. Recording code/weights license per sample keeps generated
-audio auditable when those systems are onboarded — a downstream consumer can
-filter by license without re-deriving it. See `licensing.md`.
+(CC-BY-NC-ND) terms too. Recording code/weights license per sample keeps
+generated audio auditable — a downstream consumer can filter by license
+without re-deriving it. See `licensing.md`.

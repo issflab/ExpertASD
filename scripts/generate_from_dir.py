@@ -10,6 +10,18 @@ The directory MUST live under data_fixtures/smoke/ because that is the only
 host path bind-mounted into the workers (as /data/fixtures). Put/copy your
 reference clips there first.
 
+--reference-text-from-metadata: required for systems whose registry entry
+sets requires_reference_text (currently cosyvoice2, maskgct, fish-speech) —
+the gateway returns 400 Bad Request without it. Since this script clones each
+clip saying its own transcript, the metadata transcript doubles as both the
+target text and the reference_text, so pass this flag rather than supplying a
+separate reference-metadata file (contrast generate_from_metadata.py, where
+reference and target text come from different sources). Optional but
+recommended for xtts/f5-tts; not needed for tortoise-tts/metavoice-1b/
+styletts2. See the "Reference-audio length constraints" table in
+docs/resource-requirements.md, or `GET /v1/systems` (requires_reference_text)
+for the live/current answer for any system.
+
 Examples:
   # Clone each Trump clip saying its own transcript, via Tortoise:
   python3 scripts/generate_from_dir.py --dir trump --system tortoise-tts \
@@ -18,6 +30,13 @@ Examples:
   # Fixed text for every clip, first 3 only:
   python3 scripts/generate_from_dir.py --dir trump --system tortoise-tts \
       --text "This is a synthetic voice sample." --limit 3
+
+  # CosyVoice2/MaskGCT/Fish-Speech require reference_text: pass
+  # --reference-text-from-metadata so the transcript is sent as both the
+  # reference transcript and the target text:
+  python3 scripts/generate_from_dir.py --dir trump --system cosyvoice2 \
+      --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv \
+      --reference-text-from-metadata --limit 3
 """
 from __future__ import annotations
 

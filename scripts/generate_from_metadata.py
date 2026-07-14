@@ -17,6 +17,16 @@ Row selection:
   --filenames a.wav,b.wav   only these rows (matched on the metadata filename col)
   (omitted)                 every row in the metadata
 
+--reference-metadata: required for systems whose registry entry sets
+requires_reference_text (currently cosyvoice2, maskgct, fish-speech) — the
+gateway returns 400 Bad Request without it. Optional but recommended for
+xtts/f5-tts (f5-tts otherwise auto-transcribes via Whisper, and its output
+pacing is derived from the ref audio/text pair, so an accurate transcript
+matters more there than elsewhere). Not needed for tortoise-tts/metavoice-1b/
+styletts2. See the "Reference-audio length constraints" table in
+docs/resource-requirements.md, or `GET /v1/systems` (requires_reference_text)
+for the live/current answer for any system.
+
 Examples:
   # Short-term: 5 specific rows' texts, random 40s reference from trump_long, MetaVoice
   python3 scripts/generate_from_metadata.py \
@@ -30,8 +40,8 @@ Examples:
 
   # with limit: generate for n rows in the metadata
   python3 scripts/generate_from_metadata.py  \
-      --reference-dir trump_long --system \
-      metavoice-1b --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv --limit 5
+      --reference-dir trump_long --system metavoice-1b \
+      --metadata /data/Famous_Figures/demo_data/Donald_Trump_metadata.csv --limit 5
 
   # Tortoise: reference clip can be any length, no reference_text needed
   python3 scripts/generate_from_metadata.py \

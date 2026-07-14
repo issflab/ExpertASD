@@ -26,9 +26,18 @@ FIXTURE_DIR = Path(__file__).resolve().parent.parent / "data_fixtures" / "smoke"
 REF_WAV = FIXTURE_DIR / "reference_female_en.wav"           # ~20s (default)
 REF_WAV_LONG = FIXTURE_DIR / "reference_female_en_long.wav"  # ~39s
 REF_TXT = FIXTURE_DIR / "reference_female_en.txt"
+REF_WAV_SHORT = FIXTURE_DIR / "trump_short" / "Donald_Trump_104_short.wav"  # ~4s
+REF_TEXT_SHORT = "coordination that was, you know, obviously everybody understands"
 # Systems have conflicting reference-length needs: MetaVoice-1B requires >=30s,
-# CosyVoice2 rejects >30s. Route each to a fixture it accepts.
+# CosyVoice2 rejects >30s. LLASA's short fixture here is precautionary, not a
+# confirmed requirement: it was originally added after a near-zero-output
+# run with a long reference, but that was very likely the same AR
+# generation-degeneracy issue fixed by adding repetition_penalty to
+# model.generate() (see docs/resource-requirements.md) — real usage with
+# longer (~6-9s) references has since worked fine. Route each system to a
+# fixture it accepts.
 LONG_REF_SYSTEMS = {"metavoice-1b"}
+SHORT_REF_SYSTEMS = {"llasa"}
 POLL_TIMEOUT_SEC = 600
 TEXT = "The quick brown fox jumps over the lazy dog near the riverbank at dawn."
 
@@ -50,14 +59,27 @@ def _get(path: str) -> dict:
 
 
 def run_one(system: str) -> tuple[str, bool, str]:
-    ref_wav = REF_WAV_LONG if system in LONG_REF_SYSTEMS else REF_WAV
+    if system in LONG_REF_SYSTEMS:
+        ref_wav, ref_subdir, ref_text = REF_WAV_LONG, None, None
+    elif system in SHORT_REF_SYSTEMS:
+        ref_wav, ref_subdir, ref_text = REF_WAV_SHORT, "trump_short", REF_TEXT_SHORT
+    else:
+        ref_wav, ref_subdir, ref_text = REF_WAV, None, None
+
+    ref_url = (
+        f"file:///data/fixtures/{ref_subdir}/{ref_wav.name}"
+        if ref_subdir
+        else f"file:///data/fixtures/{ref_wav.name}"
+    )
     payload = {
         "tts_system": system,
         "text": TEXT,
-        "reference_audio_url": f"file:///data/fixtures/{ref_wav.name}",
+        "reference_audio_url": ref_url,
         "requested_by": "smoke-test",
     }
-    if REF_TXT.exists():
+    if ref_text:
+        payload["reference_text"] = ref_text
+    elif REF_TXT.exists():
         payload["reference_text"] = REF_TXT.read_text().strip()
 
     try:

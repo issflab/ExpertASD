@@ -20,4 +20,48 @@ systems:
     speed: 1.0               # <1.0 slower, >1.0 faster
 
   tortoise-tts:
-    preset: fast             # ultra_fast | fast | standard | high_quality
+    preset: standard             # ultra_fast | fast | standard | high_quality
+
+  xtts:
+    language: en             # ISO 639-1; XTTS-v2 supports 17 languages
+    temperature: 1
+    speed: 1.0
+
+  styletts2:
+    alpha: 0.3                # timbre: how much of the sampled style vs. the reference
+    beta: 0.7                 # prosody: same tradeoff for the prosody half
+    diffusion_steps: 5        # more steps = more diverse/slower
+    embedding_scale: 1        # classifier-free guidance scale
+
+  f5-tts:
+    nfe_step: 32               # ODE solver steps; more = higher quality/slower
+    cfg_strength: 2            # classifier-free guidance strength
+    speed: 1.0                 # <1.0 slower, >1.0 faster
+
+  maskgct:
+    language: en                # source/target language for phonemization
+    n_timesteps: 25             # t2s diffusion sampling steps; more = higher quality/slower
+    cfg: 2.5                    # classifier-free guidance strength
+    rescale_cfg: 0.75           # CFG rescale factor
+
+  fish-speech:
+    max_new_tokens: 1024
+    top_p: 0.7
+    repetition_penalty: 1.2
+    temperature: 0.7
+
+  ssrspeech:
+    prompt_length: 3           # seconds of reference audio actually used
+    cfg_coef: 1.5               # classifier-free guidance strength
+    cfg_stride: 5
+    top_p: 0.8
+    temperature: 1
+    stop_repetition: 2
+    aug_text: true
+    use_watermark: false        # keep off to match other systems' unwatermarked output
+
+  llasa:
+    temperature: 0.9
+    top_p: 0.95
+    max_length: 2048
+    repetition_penalty: 1.2    # not present upstream; fixes AR looping/degeneration
