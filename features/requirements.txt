@@ -1,0 +1,50 @@
+# Feature-extraction module dependencies.
+#
+# Verified working together in the conda env `expertasd-features` (Python 3.10)
+# on 2026-07-22: SSL + speaker extraction on an A100 (CUDA), plus UMAP plotting,
+# all in one process. This is the dependency set the future `worker-features`
+# container should build from.
+#
+# torch/torchaudio are the CUDA 12.6 builds. Install them from the PyTorch index:
+#
+#   pip install --extra-index-url https://download.pytorch.org/whl/cu126 \
+#       torch==2.7.1+cu126 torchaudio==2.7.1+cu126
+#   pip install -r features/requirements.txt
+#
+# (torch is listed below without the +cu126 local version so a plain
+# `pip install -r` on a CUDA-12.6 host still resolves; pin the +cu126 build
+# explicitly as above for an exact match to what was verified.)
+
+# --- core numerics / io ---
+numpy==2.2.6
+PyYAML==6.0.2
+soundfile==0.13.1
+tqdm==4.67.1
+
+# --- torch runtime (see header for the cu126 index) ---
+torch==2.7.1
+torchaudio==2.7.1
+
+# --- SSL embeddings ---
+s3prl==0.4.18
+transformers==5.5.3          # s3prl upstreams; needs a modern huggingface-hub
+
+# --- speaker embeddings (ECAPA-TDNN) ---
+speechbrain==1.1.0
+
+# --- UMAP visualisation (plotly: interactive HTML + PNG via kaleido) ---
+umap-learn==0.5.12
+numba==0.65.0                # umap backend; must match numpy 2.2 (>=0.61)
+pynndescent==0.6.0
+scikit-learn==1.7.2
+plotly==6.7.0
+kaleido==1.2.0               # static PNG export for plotly figures
+pandas==2.3.1
+
+# --- pyannote embeddings: NOT installable in this same env ---
+# pyannote.audio 3.4.0 calls the removed huggingface-hub `use_auth_token` API,
+# which conflicts with the modern hub that s3prl/transformers 5.x require; and
+# pyannote.audio 4.x pulls torch 2.13/cu13, which had no working CUDA on this
+# host. Run the `pyannote` feature type from a SEPARATE env (it needs no s3prl)
+# until a compatible (pyannote, huggingface-hub, torch) triple is pinned.
+# pyannote.audio==3.4.0

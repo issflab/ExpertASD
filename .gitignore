@@ -5,3 +5,47 @@ __pycache__/
 .pytest_cache/
 *.wav.tmp
 .vscode/
+
+# --- large / generated files (keep out of git) ---
+# Images & plots
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.svg
+# Interactive plotly figures
+*.html
+# Embeddings / arrays / pickles
+*.npz
+*.npy
+*.pkl
+*.h5
+# Model weights / checkpoints
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+# Audio
+*.wav
+*.flac
+*.mp3
+*.ogg
+*.m4a
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.gz
+# Feature-extraction caches / default outputs
+features_out/
+.speechbrain/
+# Environments & logs
+venv/
+.venv/
+*.log
+
+# Keep the intentionally-tracked smoke-test fixtures despite the rules above
+!data_fixtures/**

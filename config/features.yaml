@@ -1,0 +1,60 @@
+# Feature-extraction config, consumed by `python -m features.extract --config <this>`.
+# Every default the code uses appears here explicitly, so this file doubles as
+# the reference for what is tunable. CLI flags (--protocol/--audio-dir/--out/
+# --features/--device/--no-resume) override the values below.
+
+protocol:
+  path: /data/expertasd_out/donald_trump_features/protocol_trump.tsv   # REQUIRED. csv/tsv with a header, or ASVspoof-style
+  format: auto                     # auto | csv | asvspoof
+  delimiter: "\t"                  # CSV only; null = sniff ',' vs '\t'. Use DOUBLE quotes for a real tab
+  columns: {}                      # override auto-detection. Column NAMES for csv,
+                                   # 0-based token INDICES for asvspoof. e.g.
+                                   #   {filename: 1, label: 4, system: 3}
+                                   #   {filename: audio_path, label: key}
+
+audio_dir: /data/Data/famousfigures/Donald_Trump        # REQUIRED. protocol filenames resolve against this
+output_dir: /data/expertasd_out/donald_trump_features    # <feature>.npz + <feature>.csv are written here
+
+features: [ssl, speaker]                    # any of: ssl, speaker, pyannote
+resume: true                       # skip files already present in ALL enabled outputs
+device: auto                       # auto | cpu | cuda | cuda:0
+
+audio:
+  sample_rate: 16000               # all three extractors expect 16 kHz
+  max_duration: 10.0               # seconds; null keeps the whole file
+  min_duration: null               # seconds; clips shorter are SKIPPED (counted, not failed).
+                                   # ~0.5 drops degenerate near-empty files that would else
+                                   # crash ECAPA; null keeps every clip
+  pad_mode: none                   # none = leave short clips as-is (crop long ones only);
+                                   # tile = repeat short clips to fill max_duration (fixed
+                                   # window). tile requires max_duration to be set
+  extensions: [.wav, .flac]        # tried in order when the protocol name has no suffix
+
+ssl:
+  model: xls_r_300m               # any s3prl upstream: wavlm_large, wav2vec2_large_ll60k, hubert_large_ll60k, ...
+  layers: [7]                     # hidden-state indices; negative counts from the last.
+                                   # Several layers are pooled separately and concatenated.
+  pooling: mean                    # mean | mean+std  (mean+std doubles the dimension)
+
+speaker:
+  model: speechbrain/spkrec-ecapa-voxceleb
+  savedir: null                    # null = SpeechBrain's default cache location
+
+pyannote:
+  model: pyannote/embedding        # gated: accept its terms on HF and export HF_TOKEN
+
+umap:
+  n_neighbors: 15
+  min_dist: 0.1
+  metric: cosine                   # cosine suits L2-unnormalised speaker embeddings
+  n_components: 2
+  random_state: 42                 # fixed so re-runs are comparable across plots
+
+plot:
+  dpi: 200
+  point_size: 6.0
+  alpha: 0.6
+  figsize: [9.0, 7.0]
+  real_color: "#1f77b4"            # blue is reserved for real. Do not reuse it for fakes.
+  fake_color: "#ff7f0e"            # only used when the protocol has no system column;
+                                   # with systems, each gets its own non-blue colour

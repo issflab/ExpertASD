@@ -1,0 +1,64 @@
+# Donald_Trump subset of the famousfigures corpus.
+#
+# The corpus protocol is tab-separated with header
+#   AudioName  Speaker  Source  Label  AudioPath
+# and audio lives in per-system subdirectories (Bonafide/, COZYVOICE2/, ...),
+# so AudioName alone cannot locate a file. filename is therefore mapped to
+# AudioPath, which is absolute; audio_dir is kept for reference but has no
+# effect on resolution when filenames are absolute.
+#
+# Source is "-" for bonafide rows, which the parser reads as "no system" --
+# exactly what the plot wants, since real points are coloured blue regardless.
+
+protocol:
+  path: /data/Data/famousfigures/Donald_Trump/protocol_trump.tsv
+  format: csv
+  delimiter: "\t"
+  columns:
+    filename: AudioPath
+    label: Label
+    system: Source
+    speaker: Speaker
+
+audio_dir: /data/Data/famousfigures/Donald_Trump
+output_dir: /data/expertasd_out/donald_trump_features
+
+features: [ssl, speaker]
+resume: true
+device: cuda:1
+
+audio:
+  sample_rate: 16000
+  max_duration: 6       # in seconds
+  min_duration: 0.5     # skip the ~13 degenerate short LLASA clips (else they stay
+                        # perpetually pending and force a GPU load on every run)
+  pad_mode: tile        # repeat short clips to fill max_duration (reference behaviour);
+                        # 'none' leaves short clips at their natural length
+  extensions: [.wav, .flac]
+
+ssl:
+  model: xls_r_300m
+  layers: [7]
+  pooling: mean
+
+speaker:
+  model: speechbrain/spkrec-ecapa-voxceleb
+  savedir: /data/expertasd_out/donald_trump_features/.speechbrain
+
+pyannote:
+  model: pyannote/embedding
+
+umap:
+  n_neighbors: 30
+  min_dist: 0.1
+  metric: cosine
+  n_components: 2
+  random_state: 42
+
+plot:
+  dpi: 200
+  point_size: 7.0
+  alpha: 1.0        # fully opaque, matching the reference plots
+  figsize: [11.0, 8.0]
+  real_color: "#1f77b4"
+  fake_color: "#ff7f0e"
