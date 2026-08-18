@@ -67,8 +67,47 @@ For a system with `requires_reference_text: true` (e.g. `cosyvoice2`), add
 the gateway returns `400` without it. Full request/response shape in
 [shared/schemas/openapi.yaml](shared/schemas/openapi.yaml).
 
+## Feature extraction and the frozen manifold
+
+`features/` extracts SSL / speaker / pyannote embeddings over a protocol file
+and projects them. It runs from its own conda env, not the containers — see
+[features/requirements.txt](features/requirements.txt).
+
+```bash
+# extract every enabled stream, plus a UMAP per stream (corpus overview)
+python -m features.run --config config/features.yaml
+```
+
+For a **case** — deciding whether one suspected clip belongs to a speaker —
+never use that plot. It refits UMAP on every call, so positions are not
+comparable between runs, and 2D distance carries no calibrated meaning. Fit a
+reference manifold once and project queries through it frozen:
+
+```bash
+# once per speaker per feature stream: fit and persist
+python -m features.manifold fit \
+    --features /data/feat/trump/ssl_xls_r_300m_L7.npz \
+    --config config/features.yaml \
+    --out /data/feat/trump/manifold_L7.joblib
+
+# per case: score the suspected clip(s) against it
+python -m features.manifold score \
+    --manifold /data/feat/trump/manifold_L7.joblib \
+    --features /data/feat/case_042/ssl_xls_r_300m_L7.npz \
+    --json out/case_042_scores.json --plot out/case_042.png
+```
+
+The evidence is the JSON, not the picture: distances computed in the original
+embedding space, reported as percentiles against genuine clips of that speaker
+held out of both the fit and the reference set. A query that lies outside the
+reference corpus entirely returns `inconclusive` rather than a score, and any
+query whose 2D position cannot be trusted is drawn as a red cross instead of a
+black diamond. Rationale and the remaining roadmap:
+[docs/design-review-hitl.md](docs/design-review-hitl.md).
+
 ## Layout
 
+- `features/` — embedding extraction, frozen reference manifold, plots.
 - `services/gateway/` — FastAPI entrypoint (the only host-exposed service).
 - `services/workers/<system>/` — one containerized worker per TTS system.
 - `shared/python/expertasd_common/` — shared schemas, storage, queue, health.

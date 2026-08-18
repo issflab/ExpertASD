@@ -148,6 +148,48 @@ class UmapConfig:
     random_state: int = 42
 
 
+SCORE_METRICS = ("cosine", "euclidean")
+
+
+@dataclass
+class ManifoldConfig:
+    """How a frozen reference manifold is fitted and how queries are scored.
+
+    The manifold exists so a suspected clip is never projected by a UMAP that
+    was fitted with it in the data: the projection is fitted once over the
+    reference corpus, persisted, and every query goes through `transform`. The
+    numbers that carry evidential weight are computed in the ORIGINAL embedding
+    space, not in the 2D plot -- see `features/manifold.py`.
+    """
+
+    k: int = 10                    # neighbours averaged for the kNN distances
+    holdout_fraction: float = 0.2  # genuine refs withheld to calibrate percentiles
+    holdout_seed: int = 0
+    metric: str = "cosine"         # high-dimensional distance metric
+    pca_components: int = 50       # subspace for the Mahalanobis/residual scores; 0 disables
+    trust_k: int = 15              # neighbours compared high-dim vs 2D for the trust score
+    trust_threshold: float = 0.5   # below this the 2D placement is flagged unreliable
+    min_genuine: int = 30          # refuse to fit a manifold on fewer genuine references
+
+    def __post_init__(self) -> None:
+        if self.k < 1:
+            raise ConfigError("manifold.k must be at least 1")
+        if not 0.0 < self.holdout_fraction < 1.0:
+            raise ConfigError("manifold.holdout_fraction must be strictly between 0 and 1")
+        if self.metric not in SCORE_METRICS:
+            raise ConfigError(
+                f"manifold.metric must be one of {', '.join(SCORE_METRICS)}, got '{self.metric}'"
+            )
+        if self.pca_components < 0:
+            raise ConfigError("manifold.pca_components must be >= 0 (0 disables the score)")
+        if self.trust_k < 1:
+            raise ConfigError("manifold.trust_k must be at least 1")
+        if not 0.0 <= self.trust_threshold <= 1.0:
+            raise ConfigError("manifold.trust_threshold must be between 0 and 1")
+        if self.min_genuine < 2:
+            raise ConfigError("manifold.min_genuine must be at least 2")
+
+
 @dataclass
 class PlotConfig:
     dpi: int = 200
@@ -171,6 +213,7 @@ class ExtractionConfig:
     pyannote: PyannoteConfig = field(default_factory=PyannoteConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     umap: UmapConfig = field(default_factory=UmapConfig)
+    manifold: ManifoldConfig = field(default_factory=ManifoldConfig)
     plot: PlotConfig = field(default_factory=PlotConfig)
     resume: bool = True
     device: str = "auto"  # auto | cpu | cuda | cuda:N
@@ -208,6 +251,7 @@ class ExtractionConfig:
             pyannote=_sub(PyannoteConfig, data.pop("pyannote", None), "pyannote"),
             audio=_sub(AudioConfig, data.pop("audio", None), "audio"),
             umap=_sub(UmapConfig, data.pop("umap", None), "umap"),
+            manifold=_sub(ManifoldConfig, data.pop("manifold", None), "manifold"),
             plot=_sub(PlotConfig, data.pop("plot", None), "plot"),
             **data,
         )

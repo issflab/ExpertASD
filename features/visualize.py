@@ -9,6 +9,12 @@ many plots side by side:
   real  -> always blue (plot.real_color)
   fake  -> never blue; one colour per system when the protocol names systems,
            otherwise a single contrasting colour (plot.fake_color)
+  query -> black diamond, always, and never present in a plot built by
+           `plot_umap` -- a suspected clip belongs only on the frozen map that
+           `plot_manifold` draws (see features/manifold.py for why).
+
+`plot_umap` fits a fresh UMAP and is for looking at a corpus. `plot_manifold`
+projects through a frozen one and is the only form fit to appear in a report.
 """
 from __future__ import annotations
 
@@ -17,14 +23,23 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
 
 import numpy as np
 
 from .config import ConfigError, ExtractionConfig, PlotConfig, UmapConfig
 from .pipeline import HTML_MEDIA_TYPE, PNG_MEDIA_TYPE, Artifact
 
+if TYPE_CHECKING:  # avoids a cycle: manifold imports this module at call time
+    from .manifold import QueryScore, ReferenceManifold
+
 logger = logging.getLogger("features.visualize")
+
+#: Queries are drawn in black, which no reference group can ever take. A query
+#: whose 2D position is not meaningful gets the warning colour instead -- never
+#: the black diamond, which asserts the position can be read.
+QUERY_COLOR = "#000000"
+UNRELIABLE_COLOR = "#d62728"
 
 #: Qualitative palette for fake systems. Every blue is deliberately absent so a
 #: fake can never be mistaken for a real point.
@@ -90,26 +105,24 @@ def fit_umap(embeddings: np.ndarray, cfg: UmapConfig) -> np.ndarray:
     return reducer.fit_transform(embeddings)
 
 
-def plot_umap(
-    npz_path: Path,
+def _render(
+    coords: np.ndarray,
+    labels: np.ndarray,
+    systems: np.ndarray,
+    filenames: np.ndarray,
     out_path: Path,
-    umap_cfg: Optional[UmapConfig] = None,
-    plot_cfg: Optional[PlotConfig] = None,
-    title: Optional[str] = None,
+    plot_cfg: PlotConfig,
+    title: str,
+    query: Optional[Tuple[np.ndarray, Sequence["QueryScore"]]] = None,
 ) -> List[Artifact]:
-    """Project the embeddings and write an interactive HTML (+ PNG). Returns the
-    artifacts written (PNG first when available, then HTML)."""
-    import pandas as pd
+    """Draw reference points (+ optional query overlay) and write HTML and PNG.
+
+    Shared by `plot_umap` and `plot_manifold` so the colour contract cannot
+    drift between the exploratory plot and the one that ends up in a report.
+    """
     import plotly.graph_objects as go
 
-    umap_cfg = umap_cfg or UmapConfig()
-    plot_cfg = plot_cfg or PlotConfig()
-
-    npz_path, out_path = Path(npz_path), Path(out_path)
-    embeddings, labels, systems, filenames = load_embeddings(npz_path)
-    logger.info("projecting %d x %d embeddings from %s", *embeddings.shape, npz_path)
-    coords = fit_umap(embeddings, umap_cfg)
-
+    out_path = Path(out_path)
     is_real = labels == "real"
     fake_systems = sorted({s for s, fake in zip(systems, ~is_real) if fake and s})
 
@@ -143,13 +156,58 @@ def plot_umap(
             hovertemplate="%{customdata[0]}<br>label=%{customdata[1]}<extra></extra>",
         ))
 
-    ttl = title or (
-        f"UMAP — {npz_path.stem}  (n={len(embeddings)}, "
-        f"real={int(is_real.sum())}, fake={int((~is_real).sum())})"
-    )
+    if query is not None:
+        # Drawn last and larger so a query is never lost in the reference cloud.
+        #
+        # Split into two traces, because a frozen projection MUST map every input
+        # somewhere on the existing map: a clip that is far from the whole corpus
+        # in the original space still lands on top of some cluster in 2D, and it
+        # looks exactly like a confident membership. That is the single most
+        # misleading thing this plot can do, so a query whose position cannot be
+        # trusted -- out of support, or an unreliable placement -- is drawn as a
+        # hollow red cross that reads as a warning at a glance, and never as the
+        # solid black diamond that means "this position is real".
+        q_coords, q_scores = query
+        suspect = np.array([s.out_of_support or not s.trust_ok for s in q_scores])
+        q_data = np.array([
+            [
+                os.path.basename(s.filename),
+                s.verdict,
+                f"{s.knn_genuine:.4f} (p{s.knn_genuine_pct:.1f})",
+                f"{s.margin:+.3f}",
+                f"{s.projection_trust:.2f}",
+                "position not meaningful — read the scores" if (s.out_of_support or not s.trust_ok)
+                else "position reliable",
+            ]
+            for s in q_scores
+        ], dtype=object)
+
+        for mask, name, marker in (
+            (~suspect, "query", dict(color=QUERY_COLOR, symbol="diamond",
+                                     line=dict(color="#ffffff", width=1.2))),
+            (suspect, "query — position not meaningful",
+             dict(color=UNRELIABLE_COLOR, symbol="x-thin",
+                  line=dict(color=UNRELIABLE_COLOR, width=3.0))),
+        ):
+            if not mask.any():
+                continue
+            fig.add_trace(go.Scattergl(
+                x=q_coords[mask, 0],
+                y=q_coords[mask, 1],
+                mode="markers",
+                name=f"{name} ({int(mask.sum())})",
+                marker=dict(size=plot_cfg.point_size * 2.4, **marker),
+                customdata=q_data[mask],
+                hovertemplate=(
+                    "<b>%{customdata[0]}</b><br>verdict=%{customdata[1]}"
+                    "<br>knn_genuine=%{customdata[2]}<br>margin=%{customdata[3]}"
+                    "<br>trust=%{customdata[4]}<br>%{customdata[5]}<extra></extra>"
+                ),
+            ))
+
     fig.update_layout(
         template="plotly_white",
-        title=dict(text=ttl, font=dict(size=18)),
+        title=dict(text=title, font=dict(size=18)),
         xaxis_title="UMAP-1",
         yaxis_title="UMAP-2",
         legend=dict(title_text="Labels", x=1.02, y=1.0, xanchor="left", yanchor="top"),
@@ -173,6 +231,75 @@ def plot_umap(
         logger.warning("could not write PNG (%s); HTML written at %s", exc, html_path)
 
     return artifacts
+
+
+def plot_umap(
+    npz_path: Path,
+    out_path: Path,
+    umap_cfg: Optional[UmapConfig] = None,
+    plot_cfg: Optional[PlotConfig] = None,
+    title: Optional[str] = None,
+) -> List[Artifact]:
+    """Fit a fresh UMAP over one `.npz` and plot it. Corpus overview only.
+
+    Every call refits, so positions are NOT comparable between runs or between
+    files -- fine for looking at a corpus, wrong for a query. Use
+    `plot_manifold` for anything a human is asked to judge a clip from.
+    """
+    npz_path, out_path = Path(npz_path), Path(out_path)
+    embeddings, labels, systems, filenames = load_embeddings(npz_path)
+    logger.info("projecting %d x %d embeddings from %s", *embeddings.shape, npz_path)
+    coords = fit_umap(embeddings, umap_cfg or UmapConfig())
+    is_real = labels == "real"
+    return _render(
+        coords, labels, systems, filenames, out_path, plot_cfg or PlotConfig(),
+        title or (
+            f"UMAP — {npz_path.stem}  (n={len(embeddings)}, "
+            f"real={int(is_real.sum())}, fake={int((~is_real).sum())})"
+        ),
+    )
+
+
+def plot_manifold(
+    manifold: "ReferenceManifold",
+    out_path: Path,
+    scores: Optional[Sequence["QueryScore"]] = None,
+    plot_cfg: Optional[PlotConfig] = None,
+    title: Optional[str] = None,
+) -> List[Artifact]:
+    """Draw a frozen manifold, optionally with scored queries projected onto it.
+
+    The reference points are the coordinates computed when the manifold was
+    fitted -- read back, not recomputed -- so this map is byte-identical across
+    every case scored against it, and two queries plotted on different days are
+    directly comparable.
+    """
+    coords = manifold.reference_coords
+    query = None
+    if scores:
+        query = (np.array([s.coords for s in scores], dtype=float), list(scores))
+
+    # The caveat goes on its own line rather than extending the title: a title
+    # long enough to overflow the canvas gets clipped in the PNG, and the part
+    # that gets clipped is exactly the warning.
+    n_suspect = sum(1 for s in (scores or []) if s.out_of_support or not s.trust_ok)
+    caveat = (
+        f"<br><span style='font-size:13px;color:{UNRELIABLE_COLOR}'>⚠ {n_suspect} of "
+        f"{len(scores)} query point(s) NOT meaningfully placed — read the scores, not the plot"
+        "</span>"
+    ) if n_suspect else ""
+    layer = manifold.source_meta.get("layer")
+    return _render(
+        coords, manifold.labels, manifold.systems, manifold.filenames,
+        Path(out_path), plot_cfg or PlotConfig(),
+        title or (
+            f"Frozen manifold — {manifold.source_meta.get('model', 'reference')}"
+            + (f" L{layer}" if layer is not None else "")
+            + f"  (ref n={len(coords)}, genuine={int(manifold.genuine_mask.sum())}"
+            + (f", +{len(scores)} query" if scores else "") + ")" + caveat
+        ),
+        query=query,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:

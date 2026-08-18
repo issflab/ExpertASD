@@ -50,6 +50,18 @@ umap:
   n_components: 2
   random_state: 42                 # fixed so re-runs are comparable across plots
 
+manifold:                          # `python -m features.manifold fit|score`
+  k: 10                            # neighbours averaged for the kNN distances
+  holdout_fraction: 0.2            # genuine refs withheld to calibrate the percentiles.
+                                   # Held out of the projection fit AND the reference set,
+                                   # so their scores come from the same process a query does
+  holdout_seed: 0
+  metric: cosine                   # cosine | euclidean, in the ORIGINAL embedding space
+  pca_components: 50               # subspace for the Mahalanobis + residual scores; 0 disables
+  trust_k: 15                      # neighbours compared high-dim vs 2D per query
+  trust_threshold: 0.5             # below this the query's 2D placement is flagged unreliable
+  min_genuine: 30                  # refuse to fit on less genuine audio than this (abstain instead)
+
 plot:
   dpi: 200
   point_size: 6.0

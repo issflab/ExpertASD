@@ -10,12 +10,14 @@ state.
 from __future__ import annotations
 
 import csv
+import json
 import logging
 import re
 import time
 from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import torch
@@ -205,6 +207,50 @@ def plot_path(cfg: ExtractionConfig, spec: OutputSpec) -> Path:
     return cfg.output_root / f"umap_{spec.tag}.png"
 
 
+def stream_meta(cfg: ExtractionConfig, spec: OutputSpec, dim: int, n: int) -> Dict[str, Any]:
+    """Provenance for one embeddings file: what produced these vectors.
+
+    Stored inside the `.npz` so a manifold fitted on one stream can refuse a
+    query extracted with a different model, layer, pooling, or audio front-end
+    -- a mismatch that is otherwise invisible (the arrays still have the same
+    shape) and would silently produce meaningless distances.
+    """
+    extractor = cfg.extractor_config(spec.feature)
+    return {
+        "feature": spec.feature,
+        "model": str(extractor.model),
+        "layer": spec.layer,
+        "pooling": cfg.ssl.pooling if spec.feature == "ssl" else None,
+        "sample_rate": cfg.audio.sample_rate,
+        "max_duration": cfg.audio.max_duration,
+        "min_duration": cfg.audio.min_duration,
+        "pad_mode": cfg.audio.pad_mode,
+        "dim": int(dim),
+        "n": int(n),
+        "written_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+#: Meta keys that must agree between a manifold's reference stream and a query
+#: stream. `n`/`written_at` legitimately differ; the rest change the geometry.
+META_COMPAT_KEYS = (
+    "feature", "model", "layer", "pooling",
+    "sample_rate", "max_duration", "pad_mode", "dim",
+)
+
+
+def load_stream_meta(npz_path: Path) -> Dict[str, Any]:
+    """Read the provenance dict from an embeddings `.npz`; {} for older files."""
+    with np.load(npz_path, allow_pickle=False) as data:
+        if "meta" not in data.files:
+            return {}
+        try:
+            return json.loads(str(data["meta"].item()))
+        except (ValueError, TypeError):
+            logger.warning("unreadable meta in %s; treating as absent", npz_path)
+            return {}
+
+
 def _load_existing(path: Path) -> Optional[Dict[str, np.ndarray]]:
     if not path.exists():
         return None
@@ -240,6 +286,9 @@ def _write_outputs(
             filenames=filenames.astype(str),
             labels=labels.astype(str),
             systems=systems.astype(str),
+            meta=np.array(json.dumps(
+                stream_meta(cfg, spec, embeddings.shape[1], embeddings.shape[0])
+            )),
         )
     tmp.replace(npz)
 
